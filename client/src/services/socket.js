@@ -1,10 +1,25 @@
 import io from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
 
 let socket = null;
 
+// No-op socket for serverless deployments (no WebSocket server)
+const noopSocket = {
+  emit: () => {},
+  on: () => {},
+  off: () => {},
+  id: 'noop',
+};
+
 export const initializeSocket = () => {
+  // If no socket URL configured (Vercel serverless), return no-op
+  if (!SOCKET_URL) {
+    console.log('[Socket] No VITE_SOCKET_URL — running in serverless mode (polling fallback)');
+    socket = noopSocket;
+    return socket;
+  }
+
   if (!socket) {
     socket = io(SOCKET_URL, {
       reconnection: true,
