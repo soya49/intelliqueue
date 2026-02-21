@@ -1,0 +1,50 @@
+/**
+ * IntelliQueue - Firestore Security Rules
+ * Apply these rules in Firebase Console for production security
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow unauthenticated reads for public queues
+    match /Tokens/{tokenId} {
+      allow read: if true;
+      allow create: if request.auth != null || request.resource.data.size() > 0;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Branches - public read, admin write
+    match /Branches/{branchId} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Services - public read
+    match /Services/{serviceId} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Counters - admin only
+    match /Counters/{counterId} {
+      allow read: if request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // QueueHistory - admin read, system write
+    match /QueueHistory/{historyId} {
+      allow read: if request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if request.auth == null; // System only
+      allow update, delete: if false;
+    }
+
+    // Users - self read, admin write
+    match /Users/{userId} {
+      allow read: if request.auth.uid == userId || (request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin');
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || (request.auth != null && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'admin');
+    }
+  }
+}
